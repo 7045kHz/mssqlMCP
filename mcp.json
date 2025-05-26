@@ -9,7 +9,8 @@
    ],
    "servers": {
        
-        "developer-server-mcp": {
+        
+  "mssqlmcp": {
             "url": "http://localhost:3001",
             "headers": {
                 "X-API-Key": "${input:mssql-server-mcp-api-key}"    ,
