@@ -4,7 +4,7 @@ This guide provides detailed instructions for deploying the SQL Server MCP (Mode
 
 ## Overview
 
-This image is pushed to Docker Hub as [7045khz/mssqlmcp](https://hub.docker.com/repository/docker/7045khz/mssqlmcp)
+This image is pushed to Docker Hub as [mcprunner/mssqlmcp](https://hub.docker.com/repository/docker/mcprunner/mssqlmcp)
 
 ## Running Docker Image
 
@@ -21,7 +21,7 @@ MSYS_NO_PATHCONV=1  docker run -d \
   -e MSSQL_MCP_API_KEY="StrongApiKeyYourConnections" \
   -v "$(pwd)/data:/app/Data" \
   -v "$(pwd)/logs:/app/Logs" \
-  7045khz/mssqlmcp;
+  mcprunner/mssqlmcp;
 
 ```
 
@@ -38,7 +38,7 @@ docker run -d \
   -e MSSQL_MCP_API_KEY="StrongApiKeyYourConnections" \
   -v "$(pwd)/data:/app/Data" \
   -v "$(pwd)/logs:/app/Logs" \
-  7045khz/mssqlmcp;
+  mcprunner/mssqlmcp;
 
 ```
 
@@ -74,13 +74,13 @@ Once added you should be able to hover over the "sql-server-mcp" and see "Start"
 
 ## Quick Examples of Usage and Architecture Overview
 
-- [What can I do with this?](https://github.com/7045kHz/mssqlMCP/blob/master/Documentation/EXAMPLE_USAGE.md)
-- [Architecture Documentation](https://github.com/7045kHz/mssqlMCP/blob/master/Documentation/Architecture.md)
-- [Project README.md](https://github.com/7045kHz/mssqlMCP/blob/master/README.md)
+- [What can I do with this?](https://github.com/mcprunner/mssqlMCP/blob/master/Documentation/EXAMPLE_USAGE.md)
+- [Architecture Documentation](https://github.com/mcprunner/mssqlMCP/blob/master/Documentation/Architecture.md)
+- [Project README.md](https://github.com/mcprunner/mssqlMCP/blob/master/README.md)
 
 ## Source
 
-[https://github.com/7045kHz/mssqlMCP](https://github.com/7045kHz/mssqlMCP)
+[https://github.com/mcprunner/mssqlMCP](https://github.com/mcprunner/mssqlMCP)
 
 ## Troubleshooting
 
@@ -105,4 +105,4 @@ If you encounter issues:
 
 ## Further Information
 
-For more details on using the SQL Server MCP Server, refer to the main README.md and QUICK_INSTALL.md files in [https://github.com/7045kHz/mssqlMCP](https://github.com/7045kHz/mssqlMCP).
+For more details on using the SQL Server MCP Server, refer to the main README.md and QUICK_INSTALL.md files in [https://github.com/mcprunner/mssqlMCP](https://github.com/mcprunner/mssqlMCP).

@@ -83,7 +83,7 @@ See the [full architecural documentation](./Documentation/Architecture.md) for d
 
 ### Docker Image
 
-To run via a pre-built docker image download and run via hub.docker.com [7045khz/mssqlmcp](https://hub.docker.com/r/7045khz/mssqlmcp)
+To run via a pre-built docker image download and run via hub.docker.com [mcprunner/mssqlmcp](https://hub.docker.com/r/mcprunner/mssqlmcp)
 
 ### Installation and Setup
 

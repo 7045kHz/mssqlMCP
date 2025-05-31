@@ -147,7 +147,7 @@ The SQL Server MCP server implements a complete MCP-compliant architecture with:
 
 #### Container Support
 
-- **Official Docker Hub image**: `7045khz/mssqlmcp` with automated builds
+- **Official Docker Hub image**: `mcprunner/mssqlmcp` with automated builds
 - **Multi-platform support**: Linux and Windows container compatibility
 - **Environment variable configuration**: Complete containerized deployment support
 - **Docker Compose examples**: Ready-to-deploy container orchestration
