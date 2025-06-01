@@ -278,6 +278,27 @@ if (!myTransportType.Equals("Stdio", StringComparison.OrdinalIgnoreCase))
     app.MapMcp();
 }
 
+// Add OpenAPI endpoint
+app.MapGet("/openapi.json", async (HttpContext context) =>
+{
+    var openApiPath = Path.Combine(AppContext.BaseDirectory, "openapi.json");
+    if (!File.Exists(openApiPath))
+    {
+        openApiPath = Path.Combine(Directory.GetCurrentDirectory(), "openapi.json");
+    }
+
+    if (File.Exists(openApiPath))
+    {
+        context.Response.ContentType = "application/json";
+        await context.Response.SendFileAsync(openApiPath);
+    }
+    else
+    {
+        context.Response.StatusCode = 404;
+        await context.Response.WriteAsync("OpenAPI specification file not found");
+    }
+});
+
 // Run the application
 app.Lifetime.ApplicationStarted.Register(() => Log.Information("SQL Server MCP Server started"));
 
