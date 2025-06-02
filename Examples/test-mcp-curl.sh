@@ -5,7 +5,6 @@
 # Define the API key - replace with your actual key from Set-Api-Key.ps1
 API_KEY="your-api-key-here"
 
-# Improvements needed in code
 # Base URL for the MCP server
 BASE_URL="http://localhost:3001"
 
@@ -22,7 +21,7 @@ call_mcp() {
     echo "======================================"
     
     response=$(curl -s -X POST $BASE_URL \
-         -H "X-API-Key: $API_KEY" \
+         -H "Authorization: Bearer $API_KEY" \
          -H "Content-Type: application/json" \
          -H "Accept: application/json" \
          -d "{\"jsonrpc\": \"2.0\", \"id\": \"$RANDOM\", \"method\": \"$method\", \"params\": $params}")
@@ -46,7 +45,7 @@ call_connection_tool() {
     echo "======================================"
     
     response=$(curl -s -X POST $BASE_URL/$action \
-         -H "X-API-Key: $API_KEY" \
+         -H "Authorization: Bearer $API_KEY" \
          -H "Content-Type: application/json" \
          -H "Accept: application/json" \
          -d "$request_data")

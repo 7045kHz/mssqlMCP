@@ -87,7 +87,8 @@ The `mcp.json` file in the `.vscode` folder configures how VS Code connects to t
     "sql-server-mcp": {
       "url": "http://localhost:3001",
       "headers": {
-        "X-API-Key": "${input:mssql-server-mcp-api-key}"
+        "Authorization": "Bearer ${input:mssql-server-mcp-api-key}",
+        "Content-Type": "application/json"
       }
     }
   }

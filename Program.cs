@@ -70,11 +70,29 @@ builder.Services.AddSingleton<IConnectionManager, ConnectionManager>();
 // Add CORS support
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll", builder =>
+    options.AddPolicy("CorsPolicy", corsBuilder =>
     {
-        builder.AllowAnyOrigin()
-               .AllowAnyMethod()
-               .AllowAnyHeader();
+        var corsConfig = builder.Configuration.GetSection("Cors");
+        var origins = corsConfig.GetSection("AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();
+        var methods = corsConfig.GetSection("AllowedMethods").Get<string[]>() ?? Array.Empty<string>();
+        var headers = corsConfig.GetSection("AllowedHeaders").Get<string[]>() ?? Array.Empty<string>();
+        var exposedHeaders = corsConfig.GetSection("ExposedHeaders").Get<string[]>() ?? Array.Empty<string>();
+        var allowCredentials = corsConfig.GetValue<bool>("AllowCredentials");
+
+        corsBuilder
+            .WithOrigins(origins)
+            .WithMethods(methods)
+            .WithHeaders(headers)
+            .WithExposedHeaders(exposedHeaders);
+
+        if (allowCredentials)
+        {
+            corsBuilder.AllowCredentials();
+        }
+        else
+        {
+            corsBuilder.AllowAnyOrigin();
+        }
     });
 });
 
@@ -98,7 +116,7 @@ builder.Services.Configure<Microsoft.AspNetCore.Server.Kestrel.Core.KestrelServe
 var app = builder.Build();
 
 // Configure middleware
-app.UseCors("AllowAll");
+app.UseCors("CorsPolicy");
 
 app.UseRouting();
 

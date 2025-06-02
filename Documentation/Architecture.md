@@ -271,12 +271,12 @@ The system collects detailed metadata about:
 
 ### API Security
 
-- **API Key Authentication**: Configurable API key validation via HTTP headers
-- **ApiKeyAuthMiddleware**: Comprehensive middleware component that enforces API key validation
-- **Flexible Configuration**: Configurable header name (default: X-API-Key) and key storage options
+- **Bearer Token Authentication**: Standard Bearer token authentication using the Authorization header
+- **ApiKeyAuthMiddleware**: Comprehensive middleware component that enforces Bearer token validation
 - **Environment Variable Support**: Secure key storage in `MSSQL_MCP_API_KEY` environment variable
-- **Proper HTTP Status Codes**: 401 Unauthorized for missing keys, 403 Forbidden for invalid keys
+- **Proper HTTP Status Codes**: 401 Unauthorized for missing/malformed tokens, 403 Forbidden for invalid tokens
 - **Optional Authentication**: Supports disabling authentication when no key is configured for development scenarios
+- **Industry Standard**: Uses standard Bearer token format following RFC 6750
 
 ### Robust Error Handling
 
@@ -302,20 +302,19 @@ The system collects detailed metadata about:
 ### API Key Authentication
 
 ```mermaid
-sequenceDiagram
-    participant Client as Client
+sequenceDiagram    participant Client as Client
     participant Middleware as ApiKeyAuthMiddleware
     participant Server as MCP Server
 
-    Client->>Middleware: HTTP Request with X-API-Key header
+    Client->>Middleware: HTTP Request with Bearer token
     alt No API Key Configured
         Middleware->>Server: Pass through (auth disabled)
     else API Key Configured
-        alt Missing API Key
+        alt Missing/Invalid Bearer Token Format
             Middleware-->>Client: 401 Unauthorized
-        else Invalid API Key
+        else Invalid Token Value
             Middleware-->>Client: 403 Forbidden
-        else Valid API Key
+        else Valid Bearer Token
             Middleware->>Server: Pass request to server
             Server->>Server: Process request
             Server-->>Client: Response

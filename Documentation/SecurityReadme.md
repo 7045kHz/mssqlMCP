@@ -17,8 +17,11 @@ To run the server with encryption enabled, use the provided script:
 
 ```powershell
 $env:MSSQL_MCP_KEY = "yourEncryptionKey"
-$env:MSSQL_MCP_API_KEY = "YourApiKey"
+$env:MSSQL_MCP_API_KEY = "YourApiKey" # This will be used as the Bearer token value
 ./Start-MCP-Encrypted.ps1
+
+# Then access the API using Bearer token authentication:
+# Authorization: Bearer YourApiKey
 ```
 
 This script:

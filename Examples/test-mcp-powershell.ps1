@@ -8,7 +8,6 @@ $connectionName = "DefaultConnection"
 # Base URL for the MCP server
 $baseUrl = "http://localhost:3001"
 
-# Improvements needed in code
 # Function to call MCP methods
 function Invoke-McpMethod {
     param (
@@ -31,9 +30,9 @@ function Invoke-McpMethod {
     } | ConvertTo-Json -Depth 10
     
     $headers = @{
-        "Content-Type" = "application/json"
-        "Accept"       = "application/json"
-        "X-API-Key"    = $apiKey
+        "Content-Type"  = "application/json"
+        "Accept"        = "application/json"
+        "Authorization" = "Bearer $apiKey"
     }
     
     try {

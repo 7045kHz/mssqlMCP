@@ -35,7 +35,7 @@ Set mandatory variables prior to starting MCP Server.
 | Variable Name | Mandatory | Default Value | Recommended Values (Expected Format/Type) | Description |
 | :-----------------------------------| :------------------------| :--------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
 | `MSSQL_MCP_KEY` | Yes | The `Start-MCP-Encrypted.ps1` will generate a secure random key if this variable is unset. To generate a secure encryption key you can use `Generate-MCP-Key.ps1`, to change the current key use `Rotate-Encryption-Key.ps1` | A strong, cryptographically secure random string (e.g., 32 bytes, Base64 encoded). | The master encryption key used for AES-256 encryption of connection strings stored in the `connections.db` SQLite database. |
-| `MSSQL_MCP_API_KEY` | Yes | None explicitly mentioned for the environment variable itself. If not set, API key authentication might be disabled or fall back to appsettings.json if configured there. The `Set-Api-Key.ps1` script generates one. | A strong, cryptographically secure random string. | The API key required for client applications to authenticate with the MCP server when API key authentication is enabled via HTTP headers. |
+| `MSSQL_MCP_API_KEY` | Yes | This is the Authorization Bearer token. None explicitly mentioned for the environment variable itself. If not set, API key authentication might be disabled or fall back to appsettings.json if configured there. The `Set-Api-Key.ps1` script generates one. | A strong, cryptographically secure random string. | The API key required for client applications to authenticate with the MCP server when API key authentication is enabled via HTTP headers. |
 | `MSSQL_MCP_DATA` | No | Data (A Data subdirectory in the application's root directory) | A valid file system path to a directory. | Overrides the default directory location for storing application data, most notably the `connections.db` SQLite database file. |
 
 ### TL;DR The Quick Setup Doc
@@ -97,6 +97,45 @@ This project includes a robust connection management system that allows you to:
 2. **Add, update, and remove connections** programmatically or through the MCP interface
 3. **Test connection strings** before saving them
 4. **Use connections across different tools** with a unified interface
+
+### CORS Configuration
+
+The MCP server includes built-in CORS support that can be configured through `appsettings.json`. This is particularly useful when integrating with web-based tools like Open WebUI.
+
+CORS settings can be configured in the `Cors` section of `appsettings.json`:
+
+```json
+{
+  "Cors": {
+    "AllowedOrigins": ["http://localhost:3000", "http://localhost:8080"],
+    "AllowedMethods": ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    "AllowedHeaders": [
+      "Content-Type",
+      "Authorization",
+      "X-API-Key",
+      "X-Requested-With",
+      "Accept",
+      "Origin",
+      "Access-Control-Request-Method",
+      "Access-Control-Request-Headers"
+    ],
+    "AllowCredentials": true,
+    "ExposedHeaders": ["Content-Disposition"]
+  }
+}
+```
+
+- **AllowedOrigins**: List of origins that can access the API
+- **AllowedMethods**: HTTP methods that are allowed
+- **AllowedHeaders**: HTTP headers that can be used
+- **AllowCredentials**: Whether to allow credentials (cookies, authorization headers)
+- **ExposedHeaders**: Headers that browsers are allowed to access
+
+For production environments, make sure to:
+
+1. Replace localhost URLs with your actual domain
+2. Only include necessary origins, methods, and headers
+3. Consider setting AllowCredentials to false if cross-origin credentials aren't needed
 
 ### Connection Storage
 
@@ -929,16 +968,16 @@ The API key can be configured in different ways:
 
 #### Making Authenticated Requests
 
-When API key authentication is enabled, all HTTP requests to the server must include the API key in the headers:
+When API key authentication is enabled, all HTTP requests to the server must include the API key as a Bearer token in the Authorization header:
 
 ```powershell
 # PowerShell example
 Invoke-RestMethod -Uri "http://localhost:3001/" -Method Post `
-  -Headers @{"X-API-Key" = "your-api-key"; "Content-Type" = "application/json"} `
+  -Headers @{"Authorization" = "Bearer your-api-key"; "Content-Type" = "application/json"} `
   -Body '{"jsonrpc": "2.0", "id": 1, "method": "#TestConnection", "params": {"ConnectionName": "My_DBCONNECTION_Name"}}'
 
 # curl example
-curl -X POST http://localhost:3001/ -H "X-API-Key: your-api-key" -H "Content-Type: application/json" `
+curl -X POST http://localhost:3001/ -H "Authorization: Bearer your-api-key" -H "Content-Type: application/json" `
   -d '{"jsonrpc": "2.0", "id": 1, "method": "#TestConnection", "params": {"ConnectionName": "My_DBCONNECTION_Name"}}'
 ```
 

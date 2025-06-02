@@ -1,0 +1,45 @@
+{ 
+   "inputs":[
+    {
+      "id": "mssql-server-mcp-api-key",
+      "type": "promptString",
+      "description": "Enter your SQL Server MCP API Key",
+      "password": true
+    },
+    {
+      "id": "mssql-server-mcp-key",
+      "type": "promptString",
+      "description": "Enter your SQL Server MCP Key",
+      "password": true
+    }
+   ],
+   "servers": {
+
+
+    "mssqlmcp": {
+      "type": "stdio",
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-v",
+        "C:\\Users\\U00001\\source\\repos\\MCP\\data:/app/Data",
+        "-v",
+        "C:\\Users\\U00001\\source\\repos\\MCP\\logs:/app/Logs",
+        "-e",
+        "MSSQL_MCP_KEY",
+        "-e",
+        "MSSQL_MCP_API_KEY",
+        "-e",
+        "MSSQL_MCP_TRANSPORT",
+        "mcprunner/mssqlmcp:latest"
+      ],
+      "env": {
+        "MSSQL_MCP_KEY": "${input:mssql-server-mcp-key}",
+        "MSSQL_MCP_API_KEY": "${input:mssql-server-mcp-api-key}",
+        "MSSQL_MCP_TRANSPORT": "stdio"
+      }
+    }
+    }
+}
