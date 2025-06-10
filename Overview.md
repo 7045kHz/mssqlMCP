@@ -2,7 +2,7 @@
 
 ## Overview
 
-This is a comprehensive Model Context Protocol (MCP) server implementation for SQL Server that provides extensive database connectivity, metadata retrieval, and specialized tooling for enterprise SQL Server environments. The system is designed as a robust Copilot Agent with enterprise-grade security features and comprehensive tooling for database operations, SQL Server Agent jobs, SSIS catalog management, and Azure DevOps analytics.
+This is a comprehensive Model Context Protocol (MCP) server implementation for SQL Server that provides extensive database connectivity, metadata retrieval, and specialized tooling for enterprise SQL Server environments. The system is designed as a robust Copilot Agent with **enterprise-grade security features**, **multi-tier API key management**, and comprehensive tooling for database operations, SQL Server Agent jobs, SSIS catalog management, and Azure DevOps analytics.
 
 ## Current Implementation Status
 
@@ -10,9 +10,11 @@ This is a comprehensive Model Context Protocol (MCP) server implementation for S
 
 The SQL Server MCP server implements a complete MCP-compliant architecture with:
 
-- **15+ MCP Tools** across 4 categories (Core SQL Server, Specialized Metadata, Connection Management, Security)
+- **22 MCP Tools** across 5 categories (Core SQL Server, Specialized Metadata, Connection Management, Security, API Key Management)
+- **Multi-tier API key management** with master keys and granular permissions
 - **AES-256 encryption** with secure key rotation capabilities
 - **SQLite-based connection management** with encrypted storage
+- **Usage tracking and audit trails** for API key monitoring
 - **Comprehensive logging** using Serilog
 - **Docker support** with official Docker Hub image
 - **VS Code Copilot Agent integration** with full configuration
@@ -48,7 +50,36 @@ The SQL Server MCP server implements a complete MCP-compliant architecture with:
 16. **MigrateConnectionsToEncrypted** - Migrate unencrypted connections to encrypted format
 17. **RotateKey** - Rotate encryption keys with validation and connection testing
 
+#### API Key Management Tools (5 tools)
+
+18. **CreateApiKey** - Create new managed API keys with specific endpoint permissions _(Master Key Required)_
+19. **ListApiKeys** - List all managed API keys with metadata _(Master Key Required)_
+20. **UpdateApiKey** - Update existing API key properties _(Master Key Required)_
+21. **RemoveApiKey** - Remove managed API keys _(Master Key Required)_
+22. **GetApiKeyInfo** - Get detailed information about specific API keys _(Master Key Required)_
+
 ### Security Infrastructure
+
+The MCP server implements enterprise-grade security with multiple layers of protection:
+
+- **Multi-tier API Key Authentication**:
+
+  - **Master Key** (`MSSQL_MCP_API_KEY`): Full access to all tools and API key management
+  - **Managed API Keys**: Granular permissions for specific endpoints with usage tracking
+  - **Dual Authentication Methods**: Bearer token and X-API-Key header support
+
+- **Access Control Features**:
+
+  - Endpoint-specific permissions for managed keys
+  - API key expiration and lifecycle management
+  - Usage tracking and audit trails
+  - Automatic key validation and permission checking
+
+- **Data Protection**:
+  - AES-256 encryption for connection strings
+  - SHA-256 hashing for API key storage
+  - Secure key rotation capabilities
+  - SQLite database encryption
 
 #### Encryption System
 

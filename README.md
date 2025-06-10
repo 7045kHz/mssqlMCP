@@ -8,9 +8,13 @@ This project implements an MCP server for SQL Server database connectivity, enab
 
 Features include:
 
-- SQL query execution
+- **22 MCP Tools**: Comprehensive SQL Server integration with API key management
+- **Multi-tier Authentication**: Master key and managed API keys with granular permissions
+- SQL query execution with parameterized queries
 - Database metadata retrieval (tables, views, stored procedures, functions)
 - Detailed schema information including primary/foreign keys
+- **API Key Management**: Create, update, and manage API keys with specific endpoint permissions
+- **Usage Tracking**: Monitor API key usage patterns and statistics
 - Connection string encryption with AES-256
 - Key rotation and security management
 - Async/await for all database operations
@@ -32,15 +36,60 @@ See [How This Works](./Documentation/HowItWorks.md) for an overview of communica
 ### Runtime Variables
 
 Set mandatory variables prior to starting MCP Server.
-| Variable Name | Mandatory | Default Value | Recommended Values (Expected Format/Type) | Description |
-| :-----------------------------------| :------------------------| :--------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| `MSSQL_MCP_KEY` | Yes | The `Start-MCP-Encrypted.ps1` will generate a secure random key if this variable is unset. To generate a secure encryption key you can use `Generate-MCP-Key.ps1`, to change the current key use `Rotate-Encryption-Key.ps1` | A strong, cryptographically secure random string (e.g., 32 bytes, Base64 encoded). | The master encryption key used for AES-256 encryption of connection strings stored in the `connections.db` SQLite database. |
-| `MSSQL_MCP_API_KEY` | Yes | This is the Authorization Bearer token. None explicitly mentioned for the environment variable itself. If not set, API key authentication might be disabled or fall back to appsettings.json if configured there. The `Set-Api-Key.ps1` script generates one. | A strong, cryptographically secure random string. | The API key required for client applications to authenticate with the MCP server when API key authentication is enabled via HTTP headers. |
-| `MSSQL_MCP_DATA` | No | Data (A Data subdirectory in the application's root directory) | A valid file system path to a directory. | Overrides the default directory location for storing application data, most notably the `connections.db` SQLite database file. |
+
+| Variable Name       | Mandatory | Default Value                                                                                                                                                                                                                | Recommended Values (Expected Format/Type)                                          | Description                                                                                                                                                                  |
+| :------------------ | :-------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `MSSQL_MCP_KEY`     | Yes       | The `Start-MCP-Encrypted.ps1` will generate a secure random key if this variable is unset. To generate a secure encryption key you can use `Generate-MCP-Key.ps1`, to change the current key use `Rotate-Encryption-Key.ps1` | A strong, cryptographically secure random string (e.g., 32 bytes, Base64 encoded). | The master encryption key used for AES-256 encryption of connection strings stored in the `connections.db` SQLite database.                                                  |
+| `MSSQL_MCP_API_KEY` | Yes       | This is the **Master API Key** for the multi-tier authentication system. The `Set-Api-Key.ps1` script generates one. If not set, authentication is disabled.                                                                 | A strong, cryptographically secure random string.                                  | The **Master API Key** with full access to all 22 MCP tools including API key management functions. Used to create and manage additional API keys with granular permissions. |
+| `MSSQL_MCP_DATA`    | No        | Data (A Data subdirectory in the application's root directory)                                                                                                                                                               | A valid file system path to a directory.                                           | Overrides the default directory location for storing application data, including the `connections.db` SQLite database and `apikeys.json` for managed API keys.               |
 
 ### TL;DR The Quick Setup Doc
 
 [QUICK_INSTALL](./Documentation/QUICK_INSTALL.md)
+
+## API Key Management
+
+The SQL Server MCP server now features a **multi-tier API key management system** that provides enterprise-grade access control:
+
+### Key Features
+
+- **Master Key**: Full access to all 22 MCP tools (set via `MSSQL_MCP_API_KEY`)
+- **Managed API Keys**: Granular permissions for specific endpoints
+- **Usage Tracking**: Monitor API key usage and access patterns
+- **Expiration Management**: Time-based access controls
+- **Audit Trail**: Track key creation, modification, and usage
+
+### Quick Example
+
+```powershell
+# Set master key
+$env:MSSQL_MCP_API_KEY = "your-secure-master-key"
+
+# Start server
+dotnet run
+
+# Create a read-only API key (using master key)
+curl -X POST http://localhost:3001 `
+  -H "X-API-Key: your-secure-master-key" `
+  -H "Content-Type: application/json" `
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "CreateApiKey",
+    "params": {
+      "name": "ReadOnlyKey",
+      "allowedEndpoints": ["GetTables", "QueryDatabase"],
+      "expiresOn": "2025-12-31T23:59:59Z"
+    }
+  }'
+
+# Use the new managed key
+curl -X POST http://localhost:3001 `
+  -H "X-API-Key: mcp_ABC123DEF456..." `
+  -d '{"jsonrpc":"2.0","id":1,"method":"GetTables","params":{}}'
+```
+
+**For comprehensive API key management documentation**: [ApiKeyManagement.md](./Documentation/ApiKeyManagement.md)
 
 ## Project Architecture
 
@@ -54,15 +103,15 @@ See the [full architecural documentation](./Documentation/Architecture.md) for d
 - **Interfaces/**: Service interfaces (IDatabaseMetadataProvider, IConnectionStringProvider, ISqlServerTools)
 - **Services/**: Service implementations (DatabaseMetadataProvider, ConnectionManager, ConnectionRepository)
 - **Configuration/**: Configuration-related classes (ConnectionStringProvider)
-- **Tools/**: MCP tool implementations (SqlServerTools, ConnectionManagerTool, SecurityTool)
+- **Tools/**: MCP tool implementations (SqlServerTools, ConnectionManagerTool, SecurityTool with API key management)
 - **Extensions/**: Extension methods for service registration (ServiceCollectionExtensions, ApiSecurityExtensions)
-- **Middleware/**: Middleware components (ApiKeyAuthMiddleware)
+- **Middleware/**: Middleware components (ApiKeyAuthMiddleware with multi-tier authentication)
 - **Scripts/**: Utility and management scripts (Start-MCP-Encrypted.ps1, Rotate-Encryption-Key.ps1, Migrate-To-Encrypted.ps1, Set-Api-Key.ps1, Assess-Connection-Security.ps1, Test-Connection.ps1, Test-Security-Features.ps1, Verify-Encryption-Status.ps1, mcp.json)
-- **Documentation/**: Architecture, security, usage, and API documentation
+- **Documentation/**: Architecture, security, usage, API documentation, and API key management guides
 - **Examples/**: Example scripts and usage (initialize-mcp.js, test-mcp-curl.sh, test-mcp-powershell.ps1)
 - **Logs/**: Log files (daily rolling logs)
 - **Tests/**: Test code
-- **Data/**: SQLite database for connection storage (connections.db)
+- **Data/**: SQLite database for connection storage (connections.db) and API key storage (apikeys.json)
 - **appsettings.json / appsettings.Development.json**: Application configuration
 - **Dockerfile**: Containerization support
 - **mssqlMCP.sln / mssqlMCP.csproj**: .NET solution and project files
@@ -73,7 +122,10 @@ See the [full architecural documentation](./Documentation/Architecture.md) for d
 - **DatabaseMetadataProvider**: Service for retrieving database schema information
 - **ConnectionStringProvider**: Service for managing database connection strings
 - **ConnectionManager**: Manages connection storage and retrieval
+- **ApiKeyManager**: Manages API key lifecycle, validation, and permissions
 - **SqlServerTools**: MCP tools implementation for SQL Server operations
+- **SecurityTool**: MCP tools for security operations including API key management
+- **ApiKeyAuthMiddleware**: Multi-tier authentication middleware
 - **ConnectionManagerTool**: MCP tool for managing connections
 - **SecurityTool**: MCP tool for security operations (encryption, key rotation, etc.)
 - **ServiceCollectionExtensions**: Extension methods for registering services with dependency injection

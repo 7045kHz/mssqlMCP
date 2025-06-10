@@ -10,14 +10,15 @@ This document provides a comprehensive overview of all API endpoints, usage exam
 4. [Specialized Metadata Tools](#specialized-metadata-tools)
 5. [Connection Management Tools](#connection-management-tools)
 6. [Security Tools](#security-tools)
-7. [Request/Response Format](#requestresponse-format)
-8. [Error Handling](#error-handling)
-9. [Usage Examples](#usage-examples)
-10. [Features Summary](#features-summary)
+7. [API Key Management Tools](#api-key-management-tools)
+8. [Request/Response Format](#requestresponse-format)
+9. [Error Handling](#error-handling)
+10. [Usage Examples](#usage-examples)
+11. [Features Summary](#features-summary)
 
 ## Overview
 
-The SQL Server MCP server exposes **17 MCP tools** through a single HTTP endpoint using JSON-RPC 2.0 protocol. All operations are performed via HTTP POST requests to the base URL.
+The SQL Server MCP server exposes **22 MCP tools** through a single HTTP endpoint using JSON-RPC 2.0 protocol. All operations are performed via HTTP POST requests to the base URL.
 
 **Base URL**: `http://localhost:3001`  
 **Protocol**: JSON-RPC 2.0 over HTTP POST  
@@ -25,25 +26,60 @@ The SQL Server MCP server exposes **17 MCP tools** through a single HTTP endpoin
 
 ## Authentication
 
-The server supports two authentication methods:
+The server supports a **multi-tier API key management system** with two types of authentication:
 
-### Bearer Token Authentication
+### Master Key Authentication
 
-```http
-Authorization: Bearer <your-api-key>
-```
+The master key provides **full access** to all endpoints, including API key management functions.
 
-### X-API-Key Header Authentication
+#### Bearer Token Authentication
 
 ```http
-X-API-Key: <your-api-key>
+Authorization: Bearer <your-master-api-key>
 ```
 
-**Configuration**:
+#### X-API-Key Header Authentication
+
+```http
+X-API-Key: <your-master-api-key>
+```
+
+**Master Key Configuration**:
 
 - Environment variable: `MSSQL_MCP_API_KEY`
 - Configuration file: `appsettings.json` under `ApiSecurity.ApiKey`
 - Authentication is optional if no API key is configured
+
+### Managed API Keys
+
+Managed API keys provide **granular access control** with endpoint-specific permissions. These keys are created and managed through the master key.
+
+#### Features:
+
+- **Endpoint-specific permissions**: Only access allowed endpoints
+- **Expiration dates**: Keys can have expiration times
+- **Usage tracking**: Monitor key usage and last access times
+- **Activation/deactivation**: Keys can be enabled or disabled
+- **Audit trail**: Track who created keys and when
+
+#### Creating Managed API Keys:
+
+Use the `CreateApiKey` tool (requires master key access) to create managed keys with specific permissions.
+
+#### Using Managed API Keys:
+
+```http
+Authorization: Bearer <your-managed-api-key>
+# OR
+X-API-Key: <your-managed-api-key>
+```
+
+**Important Notes**:
+
+- Managed API keys are validated against their allowed endpoints on each request
+- Master key always takes precedence during validation
+- Invalid or expired keys receive 403 Forbidden responses
+- Keys without endpoint permissions receive 403 Insufficient Permissions responses
 
 ## Core SQL Server Tools
 
@@ -1417,6 +1453,244 @@ X-API-Key: <your-api-key>
       "Document the key rotation in security logs",
       "Schedule next key rotation"
     ]
+  }
+}
+```
+
+## API Key Management Tools
+
+### 18. CreateApiKey
+
+**Method**: `CreateApiKey` _(Requires Master Key)_  
+**Description**: Create a new managed API key with specific endpoint permissions
+
+**Parameters**:
+
+- `name` (string, required): Human-readable name for the API key
+- `description` (string, optional): Description of the API key's purpose
+- `allowedEndpoints` (array, required): List of endpoints this key can access
+- `createdBy` (string, optional): Who created this API key
+- `expiresOn` (datetime, optional): Expiration date for the API key
+
+**Example**:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 18,
+  "method": "CreateApiKey",
+  "params": {
+    "name": "ReadOnlyKey",
+    "description": "API key for read-only database operations",
+    "allowedEndpoints": ["GetTables", "GetTableInfo", "QueryDatabase"],
+    "createdBy": "admin@company.com",
+    "expiresOn": "2025-12-31T23:59:59Z"
+  }
+}
+```
+
+**Response**:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 18,
+  "result": {
+    "success": true,
+    "message": "API key created successfully",
+    "apiKey": "mcp_ABC123DEF456GHI789JKL012MNO345PQ",
+    "keyInfo": {
+      "id": "12345678-1234-1234-1234-123456789012",
+      "name": "ReadOnlyKey",
+      "description": "API key for read-only database operations",
+      "allowedEndpoints": ["GetTables", "GetTableInfo", "QueryDatabase"],
+      "createdOn": "2024-06-10T12:00:00.000Z",
+      "expiresOn": "2025-12-31T23:59:59.000Z"
+    }
+  }
+}
+```
+
+### 19. ListApiKeys
+
+**Method**: `ListApiKeys` _(Requires Master Key)_  
+**Description**: List all managed API keys with their metadata (keys themselves are hidden)
+
+**Parameters**: None
+
+**Example**:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 19,
+  "method": "ListApiKeys",
+  "params": {}
+}
+```
+
+**Response**:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 19,
+  "result": {
+    "success": true,
+    "count": 2,
+    "apiKeys": [
+      {
+        "id": "12345678-1234-1234-1234-123456789012",
+        "name": "ReadOnlyKey",
+        "description": "API key for read-only database operations",
+        "allowedEndpoints": ["GetTables", "GetTableInfo", "QueryDatabase"],
+        "isActive": true,
+        "createdOn": "2024-06-10T12:00:00.000Z",
+        "modifiedOn": "2024-06-10T12:00:00.000Z",
+        "lastUsed": "2024-06-10T14:30:00.000Z",
+        "createdBy": "admin@company.com",
+        "expiresOn": "2025-12-31T23:59:59.000Z",
+        "usageCount": 157
+      },
+      {
+        "id": "87654321-4321-4321-4321-210987654321",
+        "name": "ReportingKey",
+        "description": "API key for automated reporting",
+        "allowedEndpoints": ["QueryDatabase", "GetTableInfo"],
+        "isActive": true,
+        "createdOn": "2024-06-08T09:15:00.000Z",
+        "modifiedOn": "2024-06-08T09:15:00.000Z",
+        "lastUsed": "2024-06-10T13:45:00.000Z",
+        "createdBy": "reporting-service",
+        "expiresOn": null,
+        "usageCount": 1234
+      }
+    ]
+  }
+}
+```
+
+### 20. UpdateApiKey
+
+**Method**: `UpdateApiKey` _(Requires Master Key)_  
+**Description**: Update an existing managed API key's properties
+
+**Parameters**:
+
+- `id` (string, required): ID of the API key to update
+- `name` (string, optional): New name for the API key
+- `description` (string, optional): New description
+- `allowedEndpoints` (array, optional): New list of allowed endpoints
+- `isActive` (boolean, optional): Whether the key is active
+- `expiresOn` (datetime, optional): New expiration date
+
+**Example**:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 20,
+  "method": "UpdateApiKey",
+  "params": {
+    "id": "12345678-1234-1234-1234-123456789012",
+    "name": "ReadOnlyKeyUpdated",
+    "isActive": false,
+    "expiresOn": "2024-12-31T23:59:59Z"
+  }
+}
+```
+
+**Response**:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 20,
+  "result": {
+    "success": true,
+    "message": "API key updated successfully"
+  }
+}
+```
+
+### 21. RemoveApiKey
+
+**Method**: `RemoveApiKey` _(Requires Master Key)_  
+**Description**: Remove a managed API key permanently
+
+**Parameters**:
+
+- `id` (string, required): ID of the API key to remove
+
+**Example**:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 21,
+  "method": "RemoveApiKey",
+  "params": {
+    "id": "12345678-1234-1234-1234-123456789012"
+  }
+}
+```
+
+**Response**:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 21,
+  "result": {
+    "success": true,
+    "message": "API key removed successfully"
+  }
+}
+```
+
+### 22. GetApiKeyInfo
+
+**Method**: `GetApiKeyInfo` _(Requires Master Key)_  
+**Description**: Get detailed information about a specific API key by name
+
+**Parameters**:
+
+- `name` (string, required): Name of the API key to retrieve
+
+**Example**:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 22,
+  "method": "GetApiKeyInfo",
+  "params": {
+    "name": "ReadOnlyKey"
+  }
+}
+```
+
+**Response**:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 22,
+  "result": {
+    "success": true,
+    "keyInfo": {
+      "id": "12345678-1234-1234-1234-123456789012",
+      "name": "ReadOnlyKey",
+      "description": "API key for read-only database operations",
+      "allowedEndpoints": ["GetTables", "GetTableInfo", "QueryDatabase"],
+      "isActive": true,
+      "createdOn": "2024-06-10T12:00:00.000Z",
+      "modifiedOn": "2024-06-10T12:00:00.000Z",
+      "lastUsed": "2024-06-10T14:30:00.000Z",
+      "createdBy": "admin@company.com",
+      "expiresOn": "2025-12-31T23:59:59.000Z",
+      "usageCount": 157
+    }
   }
 }
 ```
@@ -2800,11 +3074,19 @@ The Python examples demonstrate:
 
 ### Core Capabilities
 
-- **17 MCP Tools**: Comprehensive SQL Server integration
+- **22 MCP Tools**: Comprehensive SQL Server integration with API key management
 - **JSON-RPC 2.0**: Standard protocol implementation
-- **Dual Authentication**: Bearer token and X-API-Key support
+- **Multi-tier Authentication**: Master key and managed API keys with granular permissions
 - **Connection Management**: Full CRUD operations for database connections
-- **Security Features**: Encryption, key rotation, and secure key generation
+- **Security Features**: Encryption, key rotation, secure key generation, and API key management
+
+### Authentication & Access Control
+
+- **Master Key**: Full access to all endpoints and API key management
+- **Managed API Keys**: Granular endpoint-specific permissions
+- **Usage Tracking**: Monitor API key usage patterns and statistics
+- **Expiration Management**: Time-based key expiration with audit trails
+- **Dual Authentication Methods**: Bearer token and X-API-Key header support
 
 ### Database Integration
 

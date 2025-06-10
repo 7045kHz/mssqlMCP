@@ -63,6 +63,9 @@ builder.Services.AddSingleton<IEncryptionService, EncryptionService>();
 // Add key rotation service
 builder.Services.AddSingleton<IKeyRotationService, KeyRotationService>();
 
+// Add API key management service
+builder.Services.AddSingleton<ApiKeyManager>();
+
 // Add connection repository and manager
 builder.Services.AddSingleton<IConnectionRepository, SqliteConnectionRepository>();
 builder.Services.AddSingleton<IConnectionManager, ConnectionManager>();

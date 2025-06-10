@@ -9,11 +9,33 @@ Just use the docker image `mcprunner/mssqlmcp` [Docker Hub Instructions](/Docume
 1. Checkout code from [https://github.com/mcprunner/mssqlMCP.git](https://github.com/mcprunner/mssqlMCP.git)
 2. Decide on an encryption key `MSSQL_MCP_KEY` or type `string` and save somewhere. This string will be used to encrypt the connections saved in the interal sqlite database. You can use [Scripts/Generate-MCP-Key.ps1](/Scripts/Generate-MCP-Key.ps1) to create one.
 3. In a powershell session, set the MSSQL_MCP_KEY variable to your encryption key.
-4. Generate the API key `MSSQL_MCP_API_KEY` using [Scripts/Set-Api-Key.ps1](/Scripts/Set-Api-Key.ps1) and save somewhere.
-5. In the same powershell session, set the `MSSQL_MCP_API_KEY` variable to your API key.
+4. Generate the **Master API key** `MSSQL_MCP_API_KEY` using [Scripts/Set-Api-Key.ps1](/Scripts/Set-Api-Key.ps1) and save somewhere.
+5. In the same powershell session, set the `MSSQL_MCP_API_KEY` variable to your **Master API key**.
 6. Start the MCP Server in that powershell session by running [Scripts\Start-MCP-Encrypted.ps1](/Scripts/Start-MCP-Encrypted.ps1)
 7. Setup Visual Studio Code to conenct to your MCP by creating a .vscode directory under this project root directory, and `copy Scripts\mcp.json .vscode\`
 8. In VSCode option the .vscode\mcp.json and you should see a `Start` link right above the `sql-server-mcp` definition. Run Start, and cut-n-paste in the `MSSQL_MCP_KEY` when prompted.
+
+### 🔑 New: Multi-Tier API Key Management
+
+The MCP server now supports **two types of API keys**:
+
+- **Master Key** (`MSSQL_MCP_API_KEY`): Full access to all 22 MCP tools + API key management
+- **Managed API Keys**: Limited access with specific endpoint permissions
+
+**Creating Managed API Keys** (requires Master Key):
+
+```powershell
+# Use the new API key management script
+.\Scripts\Manage-ApiKeys.ps1 -Action Create -Name "ReadOnlyAccess" -AllowedEndpoints @("GetTables","QueryDatabase") -Description "Read-only database access"
+
+# List all API keys
+.\Scripts\Manage-ApiKeys.ps1 -Action List
+
+# Get detailed info about a key
+.\Scripts\Manage-ApiKeys.ps1 -Action Info -Name "ReadOnlyAccess"
+```
+
+For comprehensive API key management, see: [ApiKeyManagement.md](./ApiKeyManagement.md)
 
 ### Example of setting variables and running mssqlMCP
 

@@ -1,39 +1,44 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using mssqlMCP.Services;
+using mssqlMCP.Models;
 using System;
 using System.Threading.Tasks;
 
 namespace mssqlMCP.Middleware;
 
 /// <summary>
-/// Middleware that validates Bearer token authentication for incoming requests
+/// Middleware that validates API key authentication for incoming requests.
+/// Supports both master key (MSSQL_MCP_API_KEY) and managed API keys with endpoint permissions.
 /// </summary>
 public class ApiKeyAuthMiddleware
 {
     private readonly RequestDelegate _next;
     private readonly ILogger<ApiKeyAuthMiddleware> _logger;
-    private readonly string _apiKey;
+    private readonly string _masterApiKey;
+    private readonly ApiKeyManager _apiKeyManager;
 
     public ApiKeyAuthMiddleware(
         RequestDelegate next,
         ILogger<ApiKeyAuthMiddleware> logger,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        ApiKeyManager apiKeyManager)
     {
         _next = next;
         _logger = logger;
-        _apiKey = Environment.GetEnvironmentVariable("MSSQL_MCP_API_KEY") ??
+        _apiKeyManager = apiKeyManager;
+        _masterApiKey = Environment.GetEnvironmentVariable("MSSQL_MCP_API_KEY") ??
             configuration["ApiSecurity:ApiKey"] ??
             "";
     }
-
     public async Task InvokeAsync(HttpContext context)
     {
-        // Skip auth check if API key is not configured
-        if (string.IsNullOrEmpty(_apiKey))
+        // Skip auth check if master API key is not configured
+        if (string.IsNullOrEmpty(_masterApiKey))
         {
-            System.Console.WriteLine(@$"API key authentication is disabled. No API key configured MSSQL_MCP_API_KEY = {Environment.GetEnvironmentVariable("MSSQL_MCP_API_KEY")}.");
-            _logger.LogWarning("API key authentication is disabled. No API key configured.");
+            System.Console.WriteLine(@$"API key authentication is disabled. No master API key configured MSSQL_MCP_API_KEY = {Environment.GetEnvironmentVariable("MSSQL_MCP_API_KEY")}.");
+            _logger.LogWarning("API key authentication is disabled. No master API key configured.");
             await _next(context);
             return;
         }
@@ -53,8 +58,10 @@ public class ApiKeyAuthMiddleware
             });
             return;
         }
+        string? providedKey = null;
+        string? authMethod = null;
 
-        // Check Bearer token if present
+        // Extract key from Bearer token if present
         if (!string.IsNullOrEmpty(authHeader))
         {
             if (!authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
@@ -69,33 +76,85 @@ public class ApiKeyAuthMiddleware
                 return;
             }
 
-            var token = authHeader.Substring("Bearer ".Length).Trim();
-            if (string.Equals(token, _apiKey))
-            {
-                _logger.LogInformation("Successfully authenticated using Bearer token");
-                await _next(context);
-                return;
-            }
+            providedKey = authHeader.Substring("Bearer ".Length).Trim();
+            authMethod = "Bearer token";
         }
-
-        // Check X-API-Key if present
-        if (!string.IsNullOrEmpty(apiKeyHeader))
+        // Use X-API-Key if no Bearer token
+        else if (!string.IsNullOrEmpty(apiKeyHeader))
         {
-            if (string.Equals(apiKeyHeader, _apiKey))
-            {
-                _logger.LogInformation("Successfully authenticated using X-API-Key");
-                await _next(context);
-                return;
-            }
+            providedKey = apiKeyHeader;
+            authMethod = "X-API-Key";
         }
 
-        // If we get here, neither authentication method was successful
-        _logger.LogWarning("Invalid authentication credentials provided");
+        // Check master key first
+        if (string.Equals(providedKey, _masterApiKey))
+        {
+            _logger.LogInformation("Successfully authenticated using master key via {AuthMethod}", authMethod);
+            // Master key has access to all endpoints - store this in context for downstream use
+            context.Items["IsMasterKey"] = true;
+            context.Items["AuthenticatedBy"] = "MasterKey";
+            await _next(context);
+            return;
+        }        // Check managed API keys (only if not master key)
+        var endpoint = GetCurrentEndpoint(context);
+        var (isValid, keyInfo, isMasterKey) = await _apiKeyManager.ValidateApiKeyAsync(providedKey ?? "");
+
+        if (isValid && keyInfo != null)
+        {
+            // Check endpoint permissions for non-master keys
+            if (!isMasterKey && !keyInfo.AllowedEndpoints.Contains(endpoint) && !keyInfo.AllowedEndpoints.Contains("*"))
+            {
+                _logger.LogWarning("API key {KeyName} does not have permission for endpoint {Endpoint}",
+                    keyInfo.Name, endpoint);
+                context.Response.StatusCode = 403; // Forbidden
+                await context.Response.WriteAsJsonAsync(new
+                {
+                    error = "Insufficient permissions",
+                    message = $"API key does not have permission to access endpoint: {endpoint}"
+                });
+                return;
+            }
+
+            _logger.LogInformation("Successfully authenticated using {KeyType} via {AuthMethod} for endpoint {Endpoint}",
+                isMasterKey ? "master key" : "managed API key", authMethod, endpoint);
+
+            // Store authentication details in context
+            context.Items["IsMasterKey"] = isMasterKey;
+            context.Items["AuthenticatedBy"] = keyInfo.Name;
+            context.Items["ApiKeyInfo"] = keyInfo;
+
+            await _next(context);
+            return;
+        }
+
+        // If we get here, authentication failed
+        _logger.LogWarning("Invalid authentication credentials provided via {AuthMethod} for endpoint {Endpoint}",
+            authMethod, endpoint);
         context.Response.StatusCode = 403; // Forbidden
         await context.Response.WriteAsJsonAsync(new
         {
             error = "Invalid authentication",
             message = "The provided authentication credentials are not valid"
         });
+    }
+
+    /// <summary>
+    /// Extract the current endpoint from the request path
+    /// </summary>
+    private string GetCurrentEndpoint(HttpContext context)
+    {
+        var path = context.Request.Path.Value?.TrimStart('/');
+
+        // Handle MCP tool endpoints
+        if (path?.StartsWith("mcp/", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            var segments = path.Split('/');
+            if (segments.Length >= 2)
+            {
+                return segments[1]; // Return the tool name after "mcp/"
+            }
+        }
+
+        return path ?? "unknown";
     }
 }
