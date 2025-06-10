@@ -291,37 +291,22 @@ app.UseExceptionHandler(appError =>
     });
 });
 
-if (!myTransportType.Equals("Stdio", StringComparison.OrdinalIgnoreCase))
-{
-    app.MapMcp();
-}
-
-// Add OpenAPI endpoint
-app.MapGet("/openapi.json", async (HttpContext context) =>
-{
-    var openApiPath = Path.Combine(AppContext.BaseDirectory, "openapi.json");
-    if (!File.Exists(openApiPath))
-    {
-        openApiPath = Path.Combine(Directory.GetCurrentDirectory(), "openapi.json");
-    }
-
-    if (File.Exists(openApiPath))
-    {
-        context.Response.ContentType = "application/json";
-        await context.Response.SendFileAsync(openApiPath);
-    }
-    else
-    {
-        context.Response.StatusCode = 404;
-        await context.Response.WriteAsync("OpenAPI specification file not found");
-    }
-});
-
 // Run the application
 app.Lifetime.ApplicationStarted.Register(() => Log.Information("SQL Server MCP Server started"));
 
-// app.Run("http://localhost:3001");
-app.Run();
+if (myTransportType.Equals("Stdio", StringComparison.OrdinalIgnoreCase))
+{
+    // In stdio mode, we only want to use the MCP server transport
+    var mcpServer = app.Services.GetRequiredService<ModelContextProtocol.Server.IMcpServer>();
+    await mcpServer.RunAsync(CancellationToken.None);
+}
+else
+{
+    // For HTTP mode, start the web server
+    app.MapMcp();
+    app.Run();
+}
+
 // Global logger factory for static classes
 public static class LoggerFactory
 {
